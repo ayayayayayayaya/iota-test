@@ -5,6 +5,7 @@ from iota import *
 from getTransaction import getTransaction
 import json
 import urllib
+from op_image import from_tryte_to_picture
 
 class IOTA:
     def __init__(self, args):
@@ -13,6 +14,7 @@ class IOTA:
         self.args = args
         self.getTransaction = getTransaction(args)
         self.done_approvee_bundle = []
+        self.ignore_bundle = [ 'SKBNIFZLLVNPQUUFGAKAHDCCNWPVFZJIEUXWTP9QEEGJDTBHXBIFBGTEFGVLNXJCAD9QLXJIUSXUSUWLC', 'VXBNIWYCR9LYCVJGNAWWYOYUHHLTAODDUKNLJQBSIBCDKWJYB9CESHNLHDPFE99VXEVTJPFKUDPII9JFZ']
 
     def node_info(self):
         #self.node_infomation is type:dict
@@ -37,53 +39,36 @@ class IOTA:
                            tag = Tag(tg.encode()),
                            value = val))
 
-    def prepare_trytes(self):
-        for i in range(len(self.tx)):
-            prev_tx = None
-            trunk_branch_hash = self.trunk_and_branch()
-            #self.attach(trunk_branch_hash)
-            trunk_txn, trunk_bundle = self.getTransaction.getTrytes(trunk_branch_hash["trunkTransaction"])
-            branch_txn, branch_bundle = self.getTransaction.getTrytes(trunk_branch_hash["branchTransaction"])
-
-            for trunk_tx in trunk_txn:
-                if trunk_tx.bundle_hash not in self.done_approvee_bundle:
-                    #確認するトランザクションリストに追加
-                    self.done_approvee_bundle.append(trunk_tx.bundle_hash)
-
-            for trunk_tx_bundle in trunk_bundle:
-                if trunk_tx_bundle.bundle_hash not in self.done_approvee_bundle:
-                    #確認するトランザクションリストに追加
-                    self.done_approvee_bundle.append(trunk_tx_bundle.bundle_hash)
-
-            for branch_tx in branch_txn:
-                if branch_tx.bundle_hash not in self.done_approvee_bundle:
-                    #確認するトランザクションリストに追加
-                    self.done_approvee_bundle.append(branch_tx.bundle_hash)
-
-            for branch_tx_bundle in branch_bundle:
-                if branch_tx_bundle.bundle_hash not in self.done_approvee_bundle:
-                    #確認するトランザクションリストに追加
-                    self.done_approvee_bundle.append(branch_tx_bundle.bundle_hash)
-
-            self.tx[i].trunk_transaction_hash = trunk_branch_hash["trunkTransaction"] if prev_tx is None else prev_tx.hash
-            self.tx[i].branch_transaction_hash = trunk_branch_hash["branchTransaction"] if prev_tx is None else trunk_hash
-
-        if self.tx[0].trunk_transaction_hash not in self.done_approvee_bundle:
-            #画像確認
-            print(self.tx[0].trunk_transaction_hash)
-        if self.tx[0].branch_transaction_hash not in self.done_approvee_bundle:
-            #画像確認
-            print(self.tx[0].branch_transaction_hash)
-
-        self.trytes = self.api.prepare_transfer(self.tx)
-
     def set_bundle(self):
         bundle = ProposedBundle()
         for transaction in self.tx:
+            prev_tx = None
             bundle.add_transaction(transaction)
+            approve_hash = self.trunk_and_branch()
 
-        bundle.finalize()
-        self.bundle_tryte = bundle.as_tryte_strings()
+            trunk_bundle, trunk_image = self.getTransaction.getTrytes(approve_hash["trunkTransaction"])
+            branch_bundle, branch_image = self.getTransaction.getTrytes(approve_hash["branchTransaction"])
+
+            if not trunk_bundle in self.ignore_bundle:
+                self.approve_tx(trunk_image)
+
+            if not branch_bundle in self.ignore_bundle:
+                self.approve_tx(branch_image)
+
+        #bundle.finalize()
+        #self.bundle_tryte = bundle.as_tryte_strings()
+
+    def approve_tx(self, image):
+        img_msg = str(self.combine_tryte(image))
+        if len(img_msg) % 2 == 1:
+            img_msg = img_msg[:-1]
+        from_tryte_to_picture(TryteString(img_msg))
+        w = input("[y/n]")
+        if w == "y":
+            pass
+        elif w == "n":
+            #change tx
+            pass
 
     def trunk_and_branch(self):
         command = {
@@ -116,8 +101,14 @@ class IOTA:
     def new_address(self, index, count):
         return self.api.get_new_addresses(index, count)
 
-    def combine_tryte(self, trytes_list):
-        combined_trytes = TryteString("")
-        for i in trytes_list:
-            combined_trytes += i
-        return combined_trytes
+    def combine_tryte(self, image):
+        index = []
+        trytes = [_ for _ in range(len(image))]
+        tryte = TryteString.from_string("")
+        for fragment in image:
+            index = int(fragment.signature_message_fragment[0:8].as_string()[0:3])
+            trytes[index] = fragment.signature_message_fragment[8:]
+        else:
+            for val in trytes:
+                tryte += val
+        return tryte

@@ -25,33 +25,24 @@ def parse_argument():
 
 def main():
     args = parse_argument()
+    """
     tryte = to_tryte_from_picture(args)
     trytes = []
-    print(type(tryte))
     for i in range(math.ceil(len(tryte) / 2187)):
         trytes.append(TryteString.from_string("{0:03d}_".format(i)) + tryte[0 + i * 2179 : 2179 + i * 2179])
-
+        print(trytes[i][0:8].as_string()[0:3])
+    """
+    trytes = [TryteString.from_string("aaaagedsgredfgrdfgrd")]
     iota = IOTA(args)
-    #iota.get_bundle()
     print("need tx num: " + str(len(trytes)))
     print(iota.node_info())
     address = iota.new_address(random.randint(0, 100),len(trytes))
 
-    """
-    #2187しか入らないからtryteを全部くっつけて画像に逆変換するための関数
-    #from_tryte_to_picture(tryte)
-    tryte = iota.combine_tryte(trytes)
-    print(len(tryte))
-    print(address)
-    """
     if(iota.check_index()):
         iota.set_transaction(address["addresses"], trytes, ["TESTPIC" for _ in range(len(trytes))], [0 for _ in range(len(trytes))])
-        #iota.prepare_trytes()
-        #iota.send_tryte()
-
         iota.set_bundle()
-        iota.attach()
-        iota.send_tx()
+        #iota.attach()
+        #iota.send_tx()
 
     else:raise ValueError("LSMとKMがおかしい。しばらく待ってから再度施行")
 

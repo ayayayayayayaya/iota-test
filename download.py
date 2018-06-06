@@ -4,10 +4,10 @@
 from iota import *
 import urllib
 import json
-from getTransaction import getTransaction
 from argparse import ArgumentParser
 import math
 import sys
+from op_image import from_tryte_to_picture
 
 class getTransaction:
     def __init__(self, args):
@@ -140,10 +140,19 @@ def main():
     for i in image:
         print(len(i))
 
-    print(dir(image[1][0].signature_message_fragment))
-    #print(image[1][0].signature_message_fragment.as_trytes())
-    print(image[1][0].signature_message_fragment[0:8].as_string())
+    trytes = [_ for _ in range(len(image[0]))]
+    tryte = TryteString.from_string("")
+    for fragment in image[0]:
+        index = int(fragment.signature_message_fragment[0:8].as_string()[0:3])
+        trytes[index] = fragment.signature_message_fragment[8:]
+    else:
+        for val in trytes:
+            tryte += val
 
+    tryte = str(tryte)
+    if len(tryte) % 2 == 1:
+        tryte = tryte[:-1]
+    from_tryte_to_picture(TryteString(tryte))
 
 
 if __name__ == "__main__":

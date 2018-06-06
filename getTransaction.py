@@ -8,7 +8,6 @@ import json
 class getTransaction:
     def __init__(self, args):
         self.host_ip = args.host_ip
-        self.bundle_hash = []
 
     def getSnapshot(self):
         command = {
@@ -68,16 +67,13 @@ class getTransaction:
         jsonData = json.loads(returnData)
         for dat in jsonData["trytes"]:
             txn.append(Transaction.from_tryte_string(dat.encode("utf-8")))
-        return self.findTransactions(txn)
+        print(txn[0].bundle_hash)
+        return self.findTransactions(txn[0])
 
     def findTransactions(self, txn):
-        for bh in txn:
-            if bh.bundle_hash not in self.bundle_hash:
-                self.bundle_hash.append(str(bh.bundle_hash))
-
         command = {
             'command': 'findTransactions',
-            'bundles': self.bundle_hash
+            'bundles': [str(txn.bundle_hash)]
         }
 
         stringified = json.dumps(command)
@@ -89,10 +85,9 @@ class getTransaction:
 
         request = urllib.request.Request(url=self.host_ip, data=stringified.encode("utf-8"), headers=headers)
         returnData = urllib.request.urlopen(request).read()
-        hashes = json.loads(returnData)
+        image_hash = json.loads(returnData)
 
-        txn_bundle = self.getTransactions(hashes)
-        return txn, txn_bundle
+        return txn.bundle_hash, self.getTransactions(image_hash)
 
     def getTransactions(self, hashes):
         txn = []
