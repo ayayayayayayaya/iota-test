@@ -14,7 +14,7 @@ class IOTA:
         self.args = args
         self.getTransaction = getTransaction(args)
         self.done_approvee_bundle = []
-        self.ignore_bundle = [ 'SKBNIFZLLVNPQUUFGAKAHDCCNWPVFZJIEUXWTP9QEEGJDTBHXBIFBGTEFGVLNXJCAD9QLXJIUSXUSUWLC', 'VXBNIWYCR9LYCVJGNAWWYOYUHHLTAODDUKNLJQBSIBCDKWJYB9CESHNLHDPFE99VXEVTJPFKUDPII9JFZ']
+        self.ignore_bundle = [ 'SKBNIFZLLVNPQUUFGAKAHDCCNWPVFZJIEUXWTP9QEEGJDTBHXBIFBGTEFGVLNXJCAD9QLXJIUSXUSUWLC', 'VXBNIWYCR9LYCVJGNAWWYOYUHHLTAODDUKNLJQBSIBCDKWJYB9CESHNLHDPFE99VXEVTJPFKUDPII9JFZ', 'ESN9DHNKFPUWALGLQXXLEFAKLRIWGFGNCVNBQYOGXLNGHQXFKBXGIUBKSHWDHBHNPKYFDWFWVSFIDRSJA']
 
     def node_info(self):
         #self.node_infomation is type:dict
@@ -40,23 +40,42 @@ class IOTA:
                            value = val))
 
     def set_bundle(self):
+        depth = 20
         bundle = ProposedBundle()
         for transaction in self.tx:
             prev_tx = None
             bundle.add_transaction(transaction)
-            approve_hash = self.trunk_and_branch()
+            approve_hash = self.trunk_and_branch(depth)
 
             trunk_bundle, trunk_image = self.getTransaction.getTrytes(approve_hash["trunkTransaction"])
             branch_bundle, branch_image = self.getTransaction.getTrytes(approve_hash["branchTransaction"])
 
+            #今は代わりにハッシュが表示されるようにしてる
+            #今はdepthをインクリしていっている
+            #あと回数制限もうけて承認なしでも送れるようにしておく
+            approve = False
+            print(trunk_bundle)
             if not trunk_bundle in self.ignore_bundle:
-                self.approve_tx(trunk_image)
+                while approve != True:
+                    approve = self.approve_tx(trunk_image)
+                    if approve == False:
+                        depth += 5
+                        approve_hash = self.trunk_and_branch(depth)
+                        print(approve_hash["trunkTransaction"])
+                transaction.trunk_trasaction_hash = approve_hash["trunkTransaction"]
 
+            approve = False
             if not branch_bundle in self.ignore_bundle:
-                self.approve_tx(branch_image)
+                while approve != True:
+                    approve = self.approve_tx(branch_image)
+                    if approve == False:
+                        depth += 5
+                        approve_hash = self.trunk_and_branch(depth)
+                        print(approve_hash["branchTransaction"])
+                transaction.branch_trasaction_hash = approve_hash["branchTransaction"]
 
-        #bundle.finalize()
-        #self.bundle_tryte = bundle.as_tryte_strings()
+        bundle.finalize()
+        self.bundle_tryte = bundle.as_tryte_strings()
 
     def approve_tx(self, image):
         img_msg = str(self.combine_tryte(image))
@@ -65,15 +84,14 @@ class IOTA:
         from_tryte_to_picture(TryteString(img_msg))
         w = input("[y/n]")
         if w == "y":
-            pass
+            return True
         elif w == "n":
-            #change tx
-            pass
+            return False
 
-    def trunk_and_branch(self):
+    def trunk_and_branch(self, depth):
         command = {
             "command" : "getTransactionsToApprove",
-            "depth": 5,
+            "depth": depth,
         }
         stringified = json.dumps(command)
 

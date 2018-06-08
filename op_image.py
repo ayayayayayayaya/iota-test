@@ -8,6 +8,7 @@ import numpy as np
 import math
 
 def img_encode(img):
+    #png圧縮だとクソ重い
     encode_param = [int(cv2.IMWRITE_JPEG_QUALITY), 5]
     return cv2.imencode(".jpg", cv2.imread(img), encode_param)[1].tostring()
 

@@ -67,7 +67,6 @@ class getTransaction:
         jsonData = json.loads(returnData)
         for dat in jsonData["trytes"]:
             txn.append(Transaction.from_tryte_string(dat.encode("utf-8")))
-        print(txn[0].bundle_hash)
         return self.findTransactions(txn[0])
 
     def findTransactions(self, txn):
